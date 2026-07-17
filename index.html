@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>subject-weave</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#FBFAF6; --card:#FFFFFF; --ink:#22304A;
+    --ink-soft:#5A6478; --line:#E4E2D8;
+    --weave:#3F4E8C; --weave-soft:#EAECF7;
+    --thread-a:#1E6E5C; --thread-b:#8C5A3F; --thread-c:#7A3F6B;
+    --warn:#B7791F; --warn-soft:#FBF3E2;
+    --danger:#B3423A; --danger-soft:#F9ECEA;
+    --ok:#1E6E5C; --ok-soft:#E7F2EE;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    font-size:15px; line-height:1.6; padding-bottom:80px;
+  }
+  header{border-bottom:2px solid var(--ink); background:var(--card); padding:22px clamp(16px,4vw,48px) 18px;}
+  h1{font-family:"Nanum Myeongjo","Apple Myungjo",serif; font-size:clamp(20px,3vw,26px); font-weight:800; letter-spacing:-.01em;}
+  h1 .mark{color:var(--weave);}
+  header p{color:var(--ink-soft); font-size:13.5px; margin-top:4px;}
+  .threads{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; align-items:center;}
+  .thread{font-size:12px; border-radius:4px; padding:2px 9px; border:1px solid;}
+  .t-a{color:var(--thread-a); border-color:var(--thread-a); background:#E7F2EE;}
+  .t-b{color:var(--thread-b); border-color:var(--thread-b); background:#F6EEE9;}
+  .t-c{color:var(--thread-c); border-color:var(--thread-c); background:#F5EBF3;}
+  .threads .arrow{color:var(--ink-soft); font-size:12px;}
+  .t-out{color:var(--weave); border-color:var(--weave); background:var(--weave-soft); font-weight:600;}
+  .privacy{display:inline-block; margin-top:10px; font-size:12.5px; background:var(--weave-soft); color:var(--weave); border:1px solid var(--weave); border-radius:4px; padding:2px 10px;}
+  main{max-width:1080px; margin:0 auto; padding:0 clamp(16px,4vw,48px);}
+
+  .step{background:var(--card); border:1px solid var(--line); border-radius:8px; margin-top:22px; padding:20px 22px;}
+  .step[data-off="1"]{opacity:.45; pointer-events:none;}
+  .step-head{display:flex; align-items:baseline; gap:12px; margin-bottom:12px;}
+  .step-no{font-family:"Nanum Myeongjo",serif; font-weight:800; font-size:15px; color:var(--weave);
+    border:1.5px solid var(--weave); width:28px; height:28px; border-radius:4px;
+    display:inline-flex; align-items:center; justify-content:center; flex:none; transform:translateY(4px);}
+  .step-title{font-size:16.5px; font-weight:700;}
+  .step-sub{color:var(--ink-soft); font-size:13px;}
+
+  label{font-size:13px; font-weight:600; color:var(--ink-soft); display:block; margin-bottom:4px;}
+  input[type="text"], textarea, select{font:inherit; color:var(--ink); background:var(--paper);
+    border:1px solid var(--line); border-radius:6px; padding:8px 10px; width:100%;}
+  input:focus, textarea:focus, select:focus, button:focus-visible{outline:2px solid var(--weave); outline-offset:1px;}
+  textarea{resize:vertical; font-size:14px; line-height:1.7;}
+  code{font-family:ui-monospace,Menlo,monospace; font-size:.92em; background:var(--paper); border:1px solid var(--line); border-radius:3px; padding:1px 4px;}
+
+  .filedrop{border:2px dashed var(--line); border-radius:8px; background:var(--paper);
+    padding:26px; text-align:center; cursor:pointer;}
+  .filedrop:hover,.filedrop.drag{border-color:var(--weave);}
+  .filedrop strong{color:var(--weave);}
+  .filedrop .fname{margin-top:6px; font-size:13px; color:var(--ink-soft);}
+
+  button{font:inherit; font-weight:600; cursor:pointer; border:1px solid var(--ink);
+    background:var(--ink); color:#fff; border-radius:6px; padding:9px 18px;}
+  button.ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  button.ghost:hover{border-color:var(--ink);}
+  button.weave{background:var(--weave); border-color:var(--weave);}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  .btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; align-items:center;}
+  .msg{font-size:13px; color:var(--ink-soft);}
+
+  .notice{border-radius:6px; padding:10px 14px; font-size:13.5px; margin-top:12px; display:none;}
+  .notice.warn{display:block; background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn);}
+  .notice.ok{display:block; background:var(--ok-soft); color:var(--ok); border:1px solid var(--ok);}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; margin-top:14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px;}
+  .card-top{display:flex; justify-content:space-between; align-items:center; gap:8px;
+    border-bottom:1.5px solid var(--weave); padding-bottom:6px; margin-bottom:10px;}
+  .card-name{font-weight:700; font-size:15px;}
+  .chips{display:flex; gap:4px; flex-wrap:wrap;}
+  .chip{font-size:11px; border-radius:3px; padding:1px 6px; border:1px solid;}
+  .chip.on{color:var(--ok); border-color:var(--ok); background:var(--ok-soft);}
+  .chip.off{color:var(--danger); border-color:var(--danger); background:var(--danger-soft);}
+  .chip.warn{color:var(--warn); border-color:var(--warn); background:var(--warn-soft);}
+  .tone{display:flex; gap:4px; margin:8px 0 4px;}
+  .tone button{flex:1; font-size:11.5px; padding:5px 2px; background:transparent;
+    color:var(--ink-soft); border:1px solid var(--line); border-radius:4px; font-weight:600;}
+  .tone button[aria-pressed="true"]{background:var(--weave-soft); color:var(--weave); border-color:var(--weave);}
+  .kw{font-size:13px !important; padding:6px 8px !important;}
+  .kwbytes{font-size:11.5px; color:var(--ink-soft); text-align:right; margin-top:3px;}
+  .card-dl{width:100%; margin-top:8px; font-size:12.5px; padding:6px; background:var(--weave); border-color:var(--weave);}
+
+  table{width:100%; border-collapse:collapse; margin-top:14px; font-size:13.5px;}
+  th,td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top;}
+  th{background:var(--weave-soft); font-weight:600; color:var(--weave);}
+  td.num{text-align:right; white-space:nowrap;}
+  tr.over td{background:var(--danger-soft);}
+  tr.short td{background:var(--warn-soft);}
+  footer{max-width:1080px; margin:36px auto 0; padding:0 clamp(16px,4vw,48px); font-size:12.5px; color:var(--ink-soft);}
+  footer .sign{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; opacity:.65; letter-spacing:.02em;}
+  @media (prefers-reduced-motion: reduce){*{transition:none !important;}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="mark">▤</span> subject-weave</h1>
+  <p>학생 글에서 뽑은 문장, 자기평가서, 교사 관찰 — 세 갈래를 엮어 학생별 세특 프롬프트를 만듭니다.</p>
+  <div class="threads">
+    <span class="thread t-a">학생 글에서 뽑은 문장</span>
+    <span class="thread t-b">자기평가서</span>
+    <span class="thread t-c">교사 관찰</span>
+    <span class="arrow">→</span>
+    <span class="thread t-out">세특 프롬프트</span>
+  </div>
+  <span class="privacy">모든 처리는 이 브라우저 안에서만 — 파일도 교사 관찰도 서버로 가지 않습니다</span>
+</header>
+
+<main>
+
+  <section class="step" id="step1">
+    <div class="step-head"><span class="step-no">1</span>
+      <div><div class="step-title">자기평가 엑셀</div>
+      <div class="step-sub">리로스쿨에서 받은 원본 그대로 올리세요. 꺾쇠 제거를 미리 하지 않아도 됩니다.</div></div>
+    </div>
+    <div class="filedrop" id="drop" role="button" tabindex="0" aria-label="엑셀 파일 선택">
+      <strong>엑셀 선택</strong> 또는 여기로 끌어다 놓기
+      <div class="fname" id="fname">아직 선택된 파일 없음</div>
+    </div>
+    <input type="file" id="file" accept=".xlsx,.xls" hidden>
+    <div class="notice" id="note1"></div>
+  </section>
+
+  <section class="step" id="step2" data-off="1">
+    <div class="step-head"><span class="step-no">2</span>
+      <div><div class="step-title">추출 결과 붙여넣기 (선택)</div>
+      <div class="step-sub">PDF Splitter Plus의 지시문으로 AI가 뽑아준 결과를 통째로 붙여넣으세요. 이름이 한 글자 어긋나도(예: 최민송→최민용) 후보를 제안하고, 아래에서 직접 지정할 수 있습니다. 없으면 자기평가서만으로 진행합니다.</div>
+      <div class="step-sub" style="margin-top:8px; color:var(--weave)"><strong>드래그해서 긁지 말고, AI 답변 아래의 복사 버튼(⧉)을 누르세요.</strong> 긁어서 복사하면 <code>###</code>과 줄바꿈이 사라져 <code>김서윤주제:</code>처럼 뭉칩니다. 그래도 <code>이름 + 주제:</code> 패턴으로 갈라내긴 하지만, 복사 버튼 쪽이 훨씬 정확합니다.</div></div>
+    </div>
+    <textarea id="extract" rows="7" placeholder="### 김서영&#10;주제: …&#10;핵심 문장:&#10;1. (원문) — (해석)&#10;&#10;### 이서인&#10;…"></textarea>
+    <div class="btnrow"><button class="weave" id="match">이름으로 맞추기</button></div>
+    <div class="notice" id="note2"></div>
+    <div id="unmatched"></div>
+  </section>
+
+  <section class="step" id="step3" data-off="1">
+    <div class="step-head"><span class="step-no">3</span>
+      <div><div class="step-title">교사 관찰과 문체</div>
+      <div class="step-sub">키워드는 이 브라우저를 벗어나지 않습니다. 비워두면 그 항목 없이 프롬프트가 만들어집니다.</div>
+      <div class="step-sub" style="margin-top:8px; color:var(--weave)"><strong>부족한 점도 그대로 쓰세요.</strong> 프롬프트가 AI에게 완곡한 표현으로, 그 학생의 활동에 맞춰 새로 쓰도록 지시합니다. 사실을 뒤집지는 않으니 나온 문장은 확인하세요. 학생마다 표현이 비슷하게 나온다면 AI가 상투구를 쓰고 있는 것이니 다시 시키세요.</div></div>
+    </div>
+    <div class="btnrow" style="margin-top:0">
+      <span class="msg">전체 문체:</span>
+      <button class="ghost" data-all="적극">적극 평가</button>
+      <button class="ghost" data-all="중립">중립</button>
+      <button class="ghost" data-all="건조">건조·팩트만</button>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="btnrow">
+      <button class="weave" id="copyall">전체 묶음 복사</button>
+      <span class="msg" id="msg3"></span>
+    </div>
+    <div class="notice warn" style="display:block">묶음 복사는 왕복을 줄이지만, 한 번에 많이 넣을수록 AI가 학생을 섞거나 대충 쓸 수 있습니다. 5명 안팎으로 나눠 넣고 결과를 확인하며 쓰는 편이 안전합니다.</div>
+  </section>
+
+  <section class="step" id="step4" data-off="1">
+    <div class="step-head"><span class="step-no">4</span>
+      <div><div class="step-title">초안 바이트 검증</div>
+      <div class="step-sub">AI가 쓴 세특 초안을 붙여넣으세요. <code>### 이름</code>이 사라져도 이름을 찾아 가릅니다. 나이스 기준(한글 3바이트)으로 재고, 초과해도 자르지 않고 표시만 합니다. 줄이는 것은 교사가 판단할 일입니다.</div></div>
+    </div>
+    <textarea id="draft" rows="6" placeholder="### 김서영&#10;… 세특 본문 …&#10;&#10;### 이서인&#10;…"></textarea>
+    <div class="btnrow">
+      <button class="weave" id="verify">바이트 재기</button>
+      <button class="ghost" id="dl" disabled>엑셀로 내려받기</button>
+      <span class="msg" id="msg4"></span>
+    </div>
+    <div id="table"></div>
+  </section>
+
+</main>
+
+<footer>
+  자기평가 엑셀의 이름 열과 <code>### 이름</code>이 정확히 같아야 맞춰집니다 · 새로고침하면 모든 데이터가 사라집니다.
+  <div class="sign">© 2026 Hwasun Jung</div>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const on = (id,ev,fn) => $(id).addEventListener(ev,fn);
+
+const LIMIT = 1450, HARD = 1500;
+const S = { students:[], tone:new Map(), kw:new Map(), extract:new Map(), verified:[] };
+
+// 나이스 기준(hjh010501.github.io/neis-counter): 한글 3바이트, 줄바꿈 2바이트, 나머지 전부 1바이트.
+// 작은따옴표 ' ' 같은 문자는 비ASCII지만 1바이트다 — 최가경 세특으로 대조 검증(1453 일치).
+function neisBytes(s){
+  let t = 0;
+  for(const ch of (s||"")){
+    const c = ch.codePointAt(0);
+    if(ch === "\n") t += 2;
+    else if((c>=0xAC00 && c<=0xD7A3) || (c>=0x1100 && c<=0x11FF) || (c>=0x3131 && c<=0x318E)) t += 3;
+    else t += 1;
+  }
+  return t;
+}
+function isBlank(v){
+  const s = String(v ?? "").replace(/[\s\r\n]/g,"");
+  return s === "" || s === "-" || s === "." || s === "ㅇ" || s === "x" || s === "없음";
+}
+function tidy(v){ return String(v ?? "").replace(/\s+/g," ").trim(); }
+
+/* ---------- 1단계: 엑셀 ---------- */
+on("drop","click",()=>$("file").click());
+on("drop","keydown",e=>{ if(e.key==="Enter"||e.key===" ") $("file").click(); });
+on("drop","dragover",e=>{ e.preventDefault(); $("drop").classList.add("drag"); });
+on("drop","dragleave",()=>$("drop").classList.remove("drag"));
+on("drop","drop",e=>{ e.preventDefault(); $("drop").classList.remove("drag");
+  if(e.dataTransfer.files[0]) readXlsx(e.dataTransfer.files[0]); });
+on("file","change",e=>{ if(e.target.files[0]) readXlsx(e.target.files[0]); });
+
+async function readXlsx(f){
+  $("fname").textContent = f.name + " — 읽는 중…";
+  try{
+    const wb = XLSX.read(await f.arrayBuffer(), {type:"array"});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+    if(!rows.length) throw new Error("빈 시트");
+    const hdr = rows[0].map(h => String(h ?? "").trim());
+
+    const nameCol = hdr.findIndex(h => h === "이름" || h === "성명");
+    const idCol   = hdr.findIndex(h => h === "학번" || h === "현재학번");
+    const itemCols = hdr.map((h,i)=>({h,i})).filter(o => /^\[(선택|필수)\]/.test(o.h));
+    const blobCol = hdr.findIndex(h => h.includes("글내용"));
+
+    if(nameCol < 0) throw new Error("'이름' 열을 찾지 못했습니다.");
+    if(!itemCols.length && blobCol < 0) throw new Error("항목 열도 '글내용(통합)' 열도 없습니다.");
+
+    S.students = []; S.tone.clear(); S.kw.clear(); S.extract.clear();
+    for(let r = 1; r < rows.length; r++){
+      const row = rows[r];
+      const name = tidy(row[nameCol]);
+      if(!name) continue;
+      let items = [], mode = "";
+      if(itemCols.length){
+        mode = "항목";
+        items = itemCols
+          .map(o => ({ req: /^\[필수\]/.test(o.h) ? "필수" : "선택", text: tidy(row[o.i]) }))
+          .filter(x => !isBlank(x.text));
+      } else {
+        mode = "통합";
+        const stripped = String(row[blobCol] ?? "").replace(/[＜<][^＞>]*[＞>]/g, "");
+        items = stripped.split(/\n+/).map(t => ({req:"", text:tidy(t)})).filter(x => !isBlank(x.text));
+      }
+      const lumped = mode === "항목" && items.length <= 2 && items.some(x => x.text.length > 300);
+      S.students.push({ id: tidy(row[idCol] ?? ""), name, items, mode, lumped });
+      S.tone.set(name, "중립");
+    }
+    if(!S.students.length) throw new Error("학생 행을 찾지 못했습니다.");
+
+    $("fname").textContent = `${f.name} · ${S.students.length}명`;
+    const n = $("note1");
+    n.className = "notice ok";
+    n.textContent = itemCols.length
+      ? `항목 열 ${itemCols.length}개를 찾았습니다. 꺾쇠 제거 없이 항목별로 바로 읽었습니다.`
+      : `항목 열이 없어 '글내용(통합)'에서 꺾쇠를 제거해 읽었습니다.`;
+    $("step2").removeAttribute("data-off");
+    $("step3").removeAttribute("data-off");
+    $("step4").removeAttribute("data-off");
+    renderCards();
+  }catch(err){
+    console.error(err);
+    $("fname").textContent = "읽지 못했습니다.";
+    const n = $("note1"); n.className = "notice warn";
+    n.textContent = "엑셀을 읽지 못했습니다: " + err.message;
+  }
+}
+
+/* ---------- 2단계: 추출 결과 ---------- */
+// AI가 ###을 제목으로 렌더링해 기호가 사라질 수 있으므로 두 방식으로 가른다.
+function stripMark(s){ return String(s||"").replace(/[#*_`\s]/g,"").trim(); }
+
+function splitBlocks(raw, names){
+  // 1) ### 이 하나라도 있으면 그 기준 (학생이 한 명이어도 성립해야 한다)
+  let parts = raw.split(/^\s*###\s*/m).map(b=>b.trim()).filter(Boolean);
+  if(/^\s*###\s+\S/m.test(raw) && parts.length >= 1){
+    return parts.map(b=>{
+      const nl = b.indexOf("\n");
+      return { name: tidy(nl<0 ? b : b.slice(0,nl)), body: nl<0 ? "" : b.slice(nl+1).trim() };
+    });
+  }
+  // 2) '이름 + 주제:' 를 경계로 — 화면에서 긁어 복사하면 ### 도 줄바꿈도 사라지지만
+  //    "김서윤주제: …" 처럼 이름과 주제는 붙어서 남는다.
+  const topicRe = /([가-힣]{2,5}\d?)\s*주제\s*[:：]/g;
+  const hits = [...raw.matchAll(topicRe)];
+  if(hits.length){
+    const out = [];
+    for(let k=0; k<hits.length; k++){
+      const s = hits[k].index + hits[k][0].length;
+      const e = (k+1 < hits.length) ? hits[k+1].index : raw.length;
+      out.push({ name: hits[k][1], body: "주제: " + raw.slice(s, e).trim() });
+    }
+    return out;
+  }
+  // 2) '이름만 있는 줄'을 경계로 (### 이 사라진 경우)
+  const out = []; let cur = null;
+  for(const line of raw.split(/\r?\n/)){
+    const t = stripMark(line);
+    if(t && names.has(t)){ cur = {name:t, body:[]}; out.push(cur); }
+    else if(cur) cur.body.push(line);
+  }
+  if(out.length) return out.map(b=>({name:b.name, body:b.body.join("\n").trim()}));
+  // 3) 마지막 수단: 아는 이름이 하나도 없으면 첫 줄을 이름으로 보고 통째로 한 블록
+  const lines = raw.trim().split(/\r?\n/);
+  if(lines.length && lines[0].trim())
+    return [{ name: tidy(lines[0]), body: lines.slice(1).join("\n").trim() }];
+  return [];
+}
+
+// 한 글자 차이까지 후보로 (최민송 ↔ 최민용)
+function editDistance(a,b){
+  if(Math.abs(a.length-b.length) > 1) return 9;
+  const m=a.length, n=b.length, d=Array.from({length:m+1},(_,x)=>[x,...Array(n).fill(0)]);
+  for(let y=0;y<=n;y++) d[0][y]=y;
+  for(let x=1;x<=m;x++) for(let y=1;y<=n;y++)
+    d[x][y] = Math.min(d[x-1][y]+1, d[x][y-1]+1, d[x-1][y-1]+(a[x-1]===b[y-1]?0:1));
+  return d[m][n];
+}
+function nearest(name, pool){
+  let best=null, bd=9;
+  for(const p of pool){ const dd=editDistance(name,p); if(dd<bd){ bd=dd; best=p; } }
+  return bd<=1 ? best : null;
+}
+
+on("match","click",()=>{
+  const names = new Set(S.students.map(s=>s.name));
+  S.extract.clear();
+  const blocks = splitBlocks($("extract").value, names);
+  const n = $("note2");
+  $("unmatched").innerHTML = "";
+
+  if(!blocks.length){
+    n.className = "notice warn";
+    n.textContent = "블록을 찾지 못했습니다. 결과에 ### 이 있거나, 학생 이름만 있는 줄로 구분돼 있어야 합니다.";
+    renderCards(); return;
+  }
+
+  const pending = [];
+  let hit = 0, auto = 0;
+  for(const b of blocks){
+    const raw = stripMark(b.name);
+    if(names.has(raw)){ S.extract.set(raw, b.body); hit++; continue; }
+    // 괄호 주석 제거 후 재시도 (예: "최민용 (손글씨 판독)")
+    const bare = tidy(raw.replace(/[（(\[].*$/,""));
+    if(names.has(bare)){ S.extract.set(bare, b.body); hit++; continue; }
+    const near = nearest(bare, [...names].filter(x=>!S.extract.has(x)));
+    if(near){ S.extract.set(near, b.body); auto++; pending.push({label:bare, picked:near, body:b.body}); }
+    else pending.push({label:bare || "(이름 없음)", picked:"", body:b.body});
+  }
+
+  const missing = S.students.filter(s=>!S.extract.has(s.name)).map(s=>s.name);
+  const parts = [`${hit + auto}명 맞춤`];
+  if(auto) parts.push(`비슷한 이름 ${auto}건 자동 연결 — 아래에서 확인하세요`);
+  if(missing.length) parts.push(`추출 없음: ${missing.join(", ")}`);
+  n.className = (auto || pending.some(p=>!p.picked)) ? "notice warn" : "notice ok";
+  n.textContent = parts.join(" · ");
+
+  if(pending.length) renderPending(pending);
+  renderCards();
+});
+
+function renderPending(pending){
+  const box = $("unmatched");
+  const opts = S.students.map(s=>s.name);
+  box.innerHTML = `<div class="step-sub" style="margin-top:12px"><strong>이름이 정확히 맞지 않은 블록</strong> — AI가 손글씨에서 이름을 잘못 읽었을 수 있습니다. 누구 것인지 지정하세요.</div>` +
+    pending.map((p,i)=>`
+      <div class="card" style="margin-top:8px">
+        <div class="card-top"><span class="card-name">AI가 쓴 이름: ${p.label}</span></div>
+        <select data-pending="${i}">
+          <option value="">— 연결 안 함 —</option>
+          ${opts.map(o=>`<option value="${o}" ${o===p.picked?"selected":""}>${o}</option>`).join("")}
+        </select>
+        <div class="kwbytes" style="text-align:left; margin-top:6px">${(p.body||"").slice(0,90).replace(/</g,"&lt;")}…</div>
+      </div>`).join("");
+  box.querySelectorAll("[data-pending]").forEach(sel=>{
+    sel.addEventListener("change", e=>{
+      const p = pending[+e.target.dataset.pending];
+      for(const [k,v] of S.extract) if(v === p.body) S.extract.delete(k);
+      if(e.target.value) S.extract.set(e.target.value, p.body);
+      renderCards();
+    });
+  });
+}
+
+/* ---------- 3단계: 카드 ---------- */
+const TONES = ["적극","중립","건조"];
+const TONE_LABEL = {적극:"적극 평가", 중립:"중립", 건조:"건조·팩트만"};
+
+function renderCards(){
+  const wrap = $("cards"); wrap.innerHTML = "";
+  S.students.forEach((s,i)=>{
+    const has = S.extract.has(s.name);
+    const kw = S.kw.get(s.name) || "";
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-name">${s.name}</span>
+        <span class="chips">
+          <span class="chip ${has?"on":"off"}">${has?"추출 있음":"추출 없음"}</span>
+          <span class="chip ${s.items.length>=4?"on":"warn"}">자기평가 ${s.items.length}항목</span>
+          ${s.lumped?'<span class="chip warn">몰아 씀</span>':""}
+        </span>
+      </div>
+      <div class="tone" role="group" aria-label="${s.name} 문체">
+        ${TONES.map(t=>`<button data-tone="${t}" data-i="${i}" aria-pressed="${S.tone.get(s.name)===t}">${TONE_LABEL[t]}</button>`).join("")}
+      </div>
+      <input type="text" class="kw" data-kw="${i}" value="${kw.replace(/"/g,"&quot;")}"
+             placeholder="교사 관찰 (좋은 점·부족한 점 모두)">
+      <div class="kwbytes" data-kwb="${i}">${kw?neisBytes(kw)+"바이트":""}</div>
+      <button class="card-dl" data-copy="${i}">이 학생 프롬프트 복사</button>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+$("cards").addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  if(b.dataset.tone !== undefined){
+    S.tone.set(S.students[+b.dataset.i].name, b.dataset.tone);
+    renderCards();
+  } else if(b.dataset.copy !== undefined){
+    copyText(buildPrompt(S.students[+b.dataset.copy]), $("msg3"), "프롬프트를 복사했습니다.");
+  }
+});
+$("cards").addEventListener("input", e=>{
+  const el = e.target;
+  if(el.dataset.kw === undefined) return;
+  const i = +el.dataset.kw;
+  S.kw.set(S.students[i].name, el.value);
+  const b = document.querySelector(`[data-kwb="${i}"]`);
+  if(b) b.textContent = el.value ? neisBytes(el.value)+"바이트" : "";
+});
+document.querySelectorAll("[data-all]").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    S.students.forEach(s => S.tone.set(s.name, b.dataset.all));
+    renderCards();
+  });
+});
+
+const TONE_RULE = {
+  적극: "관찰과 평가 표현(~하는 모습이 인상적임, ~능력을 보여줌, ~한 점이 특히 돋보임, ~태도가 우수함)을 자연스럽게 사용한다.",
+  중립: "관찰 서술을 기본으로 하고, 자료에 근거가 분명한 경우에만 평가 표현을 절제해서 쓴다.",
+  건조: "평가 형용사(우수함, 돋보임, 뛰어남, 인상적임 등)를 쓰지 않는다. 학생이 실제로 한 활동과 쓴 내용만 사실 그대로 서술한다."
+};
+
+function buildPrompt(s){
+  const ex = S.extract.get(s.name) || "";
+  const kw = (S.kw.get(s.name) || "").trim();
+  const tone = S.tone.get(s.name) || "중립";
+  const items = s.items.map(x => (x.req ? `[${x.req}] ` : "") + x.text).join("\n");
+
+  let p = `아래는 고등학교 2학년 학생 한 명의 영어 쓰기·말하기 수행평가 자료다. 이를 바탕으로 교과 세부능력 및 특기사항(세특)을 작성하라.\n\n`;
+  p += `학생 이름: ${s.name}\n\n`;
+  if(ex){
+    p += `[학생이 쓴 영어 원문에서 추출한 내용]\n${ex}\n\n`;
+  }
+  p += `[학생 자기평가]\n${items || "(작성 내용 없음)"}\n\n`;
+  if(s.lumped) p += `참고: 이 학생은 항목 칸을 나눠 쓰지 않고 한 칸에 몰아 썼다. 항목 구분 없이 전체를 읽어라.\n\n`;
+  if(kw) p += `[교사 관찰]\n${kw}\n\n`;
+
+  p += `[작성 규칙]
+- 교사가 학생을 관찰하고 평가하는 문체로 쓴다. 종결은 ~함, ~음. "나는/내가" 같은 1인칭은 모두 제3자 관찰 서술로 바꾼다.
+- ${TONE_RULE[tone]}
+- 학생이 쓴 영어의 문법과 철자 오류, 그리고 어색한 어휘는 고등학생 수준의 자연스러운 표현으로 교정한다. 단, 평가 대상인 어법 구조(수동태, 관계대명사, not A but B, I suggest S+V, to부정사, 가정법, 비교급 등)는 절대 바꾸지 않는다. 수동태를 능동태로, 가정법을 직설법으로 바꾸면 평가 대상이 사라진다.
+- 뜻을 살리는 최소한의 교정만 한다. 더 멋진 문장으로 새로 쓰지 않는다.
+- 사실(제안 내용, 주제, 활동명, 자료 제목, 진로 분야)은 바꾸거나 지어내지 않는다. 자료에 없는 활동·성과를 새로 만들지 않는다.
+- [교사 관찰]이 있으면 세특 본문에 자연스럽게 녹여 넣는다. 따로 떼어 붙이지 말고 활동 서술과 이어지게 한다.
+- [교사 관찰]에 부족한 점, 아쉬운 점이 담겨 있으면 완곡하게 쓴다. 결핍을 지적하는 문장("~이 부족함", "~을 못함", "~이 아쉬움")으로 쓰지 말고, 앞으로의 방향이나 성장 가능성으로 돌린다.
+  **이때 문장은 그 학생의 활동 내용과 이어지도록 새로 쓴다.** 정해진 표현이나 흔한 상투구를 가져다 쓰지 말고, 이 학생이 실제로 무엇을 썼고 무엇을 했는지에 맞춰 표현을 만든다. 같은 지적이라도 학생마다 다른 문장이 나와야 한다.
+  **다만 완곡함은 표현의 문제이지 사실의 문제가 아니다.** 없는 강점을 지어내 덮거나, 부족한 점을 우수한 점으로 뒤집지 않는다. 교사가 관찰한 사실은 그대로 남기고 어조만 부드럽게 한다.
+- 어휘를 나열할 때는 가운데점(·)을 쓰지 말고 쉼표(,)를 쓴다.
+- 인용문은 작은따옴표 ' ' 로 감싼다. 원문에 따옴표가 없던 것에 새로 씌우지 않는다.
+- [판독불가] 표시가 있는 문장은 인용하지 않는다.
+- 영어 문장을 인용할 때는 한글 해석을 덧붙이지 않아도 된다. 인용은 1~2개면 충분하다.
+- 분량은 1450바이트를 넘지 않는다. 나이스 기준으로 한글은 3바이트, 영문·숫자·공백은 1바이트다.
+- **자료가 적은 학생을 억지로 늘이지 않는다.** 1450은 상한이지 채워야 할 분량이 아니다. 쓸 내용이 적으면 짧게 끝낸다.
+- 의미를 알 수 없는 부분은 추측해 채우지 말고 그 부분을 빼고 쓴다.
+
+출력은 아래 형식만 낸다. 다른 말은 덧붙이지 않는다.
+
+### ${s.name}
+(세특 본문)`;
+  return p;
+}
+
+on("copyall","click",()=>{
+  const all = S.students.map(buildPrompt).join("\n\n———\n\n");
+  copyText(all, $("msg3"), `${S.students.length}명 분량을 복사했습니다.`);
+});
+
+async function copyText(text, el, okMsg){
+  try{
+    await navigator.clipboard.writeText(text);
+    el.textContent = okMsg;
+  }catch(err){
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand && document.execCommand("copy");
+    ta.remove();
+    el.textContent = ok ? okMsg : "복사에 실패했습니다.";
+  }
+  setTimeout(()=>{ el.textContent = ""; }, 4000);
+}
+
+/* ---------- 4단계: 검증 ---------- */
+// 세특 본문에는 '주제:' 같은 표식이 없으므로 이름 자체를 경계로 삼는다.
+function splitDraft(raw, names){
+  const parts = raw.split(/^\s*###\s*/m).map(b=>b.trim()).filter(Boolean);
+  if(/^\s*###\s+\S/m.test(raw) && parts.length >= 1){
+    return parts.map(b=>{
+      const nl = b.indexOf("\n");
+      return { name: tidy(nl<0 ? b : b.slice(0,nl)), body: nl<0 ? "" : b.slice(nl+1).trim() };
+    });
+  }
+  // ### 이 사라진 경우: 아는 이름만 있는 줄을 경계로
+  const out = []; let cur = null;
+  for(const line of raw.split(/\r?\n/)){
+    const t = stripMark(line);
+    if(t && names.has(t)){ cur = {name:t, body:[]}; out.push(cur); }
+    else if(cur) cur.body.push(line);
+  }
+  if(out.length) return out.map(b=>({name:b.name, body:b.body.join("\n").trim()}));
+  // 줄바꿈까지 뭉개진 경우: 아는 이름이 나오는 지점을 경계로
+  const arr = [...names].sort((a,b)=>b.length-a.length)
+                        .map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+  if(arr.length){
+    const re = new RegExp("(" + arr.join("|") + ")", "g");
+    const hits = [...raw.matchAll(re)];
+    if(hits.length){
+      const res = [];
+      for(let k=0;k<hits.length;k++){
+        const s = hits[k].index + hits[k][0].length;
+        const e = (k+1<hits.length) ? hits[k+1].index : raw.length;
+        const body = raw.slice(s,e).replace(/^[\s#*:：-]+/,"").trim();
+        if(body.length > 30) res.push({ name: hits[k][1], body });
+      }
+      if(res.length) return res;
+    }
+  }
+  return [];
+}
+
+on("verify","click",()=>{
+  const known = new Set(S.students.map(s=>s.name));
+  const blocks = splitDraft($("draft").value, known);
+  const map = new Map();
+  for(const b of blocks){
+    const raw = stripMark(b.name);
+    let name = known.has(raw) ? raw : "";
+    if(!name){
+      const bare = tidy(raw.replace(/[（(\[].*$/,""));
+      if(known.has(bare)) name = bare;
+      else { const near = nearest(bare, [...known].filter(x=>!map.has(x))); if(near) name = near; }
+    }
+    if(name) map.set(name, b.body);
+  }
+  S.verified = S.students
+    .filter(s => map.has(s.name))
+    .map(s => ({ id:s.id, name:s.name, text:map.get(s.name), bytes:neisBytes(map.get(s.name)) }));
+
+  const unknown = [...map.keys()].filter(k => !S.students.some(s => s.name === k));
+  const missing = S.students.filter(s => !map.has(s.name)).map(s => s.name);
+
+  let html = `<table><thead><tr><th>순번</th><th>학번</th><th>이름</th><th>세특 초안</th><th>바이트</th><th>표시</th></tr></thead><tbody>`;
+  S.verified.forEach((v,i)=>{
+    const over = v.bytes > HARD, short = !over && v.bytes < 600;
+    html += `<tr class="${over?"over":(short?"short":"")}">
+      <td class="num">${i+1}</td><td class="num">${v.id}</td><td>${v.name}</td>
+      <td>${v.text.replace(/</g,"&lt;")}</td>
+      <td class="num">${v.bytes}</td>
+      <td>${over?"1500 초과":(v.bytes>LIMIT?"1450 넘음":(short?"짧음 — 자료가 적으면 정상":""))}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  $("table").innerHTML = S.verified.length ? html : "";
+  $("dl").disabled = !S.verified.length;
+
+  const parts = [`${S.verified.length}명 확인`];
+  if(missing.length) parts.push(`초안 없음: ${missing.join(", ")}`);
+  if(unknown.length) parts.push(`엑셀에 없는 이름: ${unknown.join(", ")}`);
+  $("msg4").textContent = parts.join(" · ");
+});
+
+on("dl","click",()=>{
+  const aoa = [["순번","학번","이름","세특(초안)","바이트수","1500byte 초과"]];
+  S.verified.forEach((v,i)=> aoa.push([i+1, v.id, v.name, v.text, v.bytes, v.bytes>HARD?"초과":""]));
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws["!cols"] = [{wch:6},{wch:10},{wch:10},{wch:90},{wch:10},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "세특");
+  XLSX.writeFile(wb, "세특_초안.xlsx");
+});
+</script>
+</body>
+</html>

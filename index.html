@@ -176,7 +176,8 @@
   <section class="step" id="step4" data-off="1">
     <div class="step-head"><span class="step-no">4</span>
       <div><div class="step-title">초안 바이트 검증</div>
-      <div class="step-sub">세특 초안을 붙여넣으면 바이트를 잽니다. 초과는 표시만 하고 자르지 않습니다.</div></div>
+      <div class="step-sub">세특 초안을 붙여넣으면 바이트를 잽니다. 초과는 표시만 하고 자르지 않습니다.</div>
+      <details class="tip"><summary>세특이 이상하면 (섞임·깨짐)</summary>한 대화에서 여러 명을 몰아 쓰면 앞 학생 문장이 뒤 학생에 섞이거나 한글이 깨집니다("머릿쪽으로" 같은 손상). 판독과 똑같습니다. <strong>조립도 5명씩 새 대화로</strong> 하세요. 그리고 생기부에 넣기 전 인용문은 원본과 대조하세요.</details></div>
     </div>
     <textarea id="draft" rows="6" placeholder="### 정화선&#10;… 세특 본문 …&#10;&#10;### 조은영&#10;…"></textarea>
     <div class="btnrow">
@@ -284,6 +285,14 @@ async function readXlsx(f){
       S.tone.set(name, "중립");
     }
     if(!S.students.length) throw new Error("학생 행을 찾지 못했습니다.");
+
+    // 학번 오름차순 정렬 (나이스 입력 순서와 맞춤). 학번 없으면 원래 순서 유지.
+    S.students.sort((a,b)=>{
+      const na = parseInt(String(a.id).replace(/\D/g,""),10);
+      const nb = parseInt(String(b.id).replace(/\D/g,""),10);
+      if(isNaN(na) || isNaN(nb)) return 0;
+      return na - nb;
+    });
 
     $("fname").textContent = `${f.name} · ${S.students.length}명`;
     const n = $("note1");
@@ -501,8 +510,7 @@ function buildPrompt(s){
   p += `[작성 규칙]
 - 교사가 학생을 관찰하고 평가하는 문체로 쓴다. 종결은 ~함, ~음. "나는/내가" 같은 1인칭은 모두 제3자 관찰 서술로 바꾼다.
 - ${TONE_RULE[tone]}
-- 학생이 쓴 영어의 문법과 철자 오류, 그리고 어색한 어휘는 고등학생 수준의 자연스러운 표현으로 교정한다. 단, 평가 대상인 어법 구조(수동태, 관계대명사, not A but B, I suggest S+V, to부정사, 가정법, 비교급 등)는 절대 바꾸지 않는다. 수동태를 능동태로, 가정법을 직설법으로 바꾸면 평가 대상이 사라진다.
-- 뜻을 살리는 최소한의 교정만 한다. 더 멋진 문장으로 새로 쓰지 않는다.
+- **학생이 쓴 영어는 오류가 있어도 원문 그대로 인용한다. 본문 안에서 고치지 않는다.** 교정은 교사가 판단할 일이다.\n\
 - 사실(제안 내용, 주제, 활동명, 자료 제목, 진로 분야)은 바꾸거나 지어내지 않는다. 자료에 없는 활동·성과를 새로 만들지 않는다.
 - [교사 관찰]이 있으면 세특 본문에 자연스럽게 녹여 넣는다. 따로 떼어 붙이지 말고 활동 서술과 이어지게 한다.
 - [교사 관찰]에 부족한 점, 아쉬운 점이 담겨 있으면 완곡하게 쓴다. 결핍을 지적하는 문장("~이 부족함", "~을 못함", "~이 아쉬움")으로 쓰지 말고, 앞으로의 방향이나 성장 가능성으로 돌린다.
@@ -512,14 +520,15 @@ function buildPrompt(s){
 - 인용문은 작은따옴표 ' ' 로 감싼다. 원문에 따옴표가 없던 것에 새로 씌우지 않는다.
 - [판독불가] 표시가 있는 문장은 인용하지 않는다.
 - 영어 문장을 인용할 때는 한글 해석을 덧붙이지 않아도 된다. 인용은 1~2개면 충분하다.
-- 분량은 1450바이트를 넘지 않는다. 나이스 기준으로 한글은 3바이트, 영문·숫자·공백은 1바이트다.
-- **자료가 적은 학생을 억지로 늘이지 않는다.** 1450은 상한이지 채워야 할 분량이 아니다. 쓸 내용이 적으면 짧게 끝낸다.
+- **분량을 스스로 제한하지 않는다. 자료에 담긴 내용을 충실히 반영한다.** 길이를 맞추려고 자기평가 내용을 줄이거나 빼면 안 된다. 줄이는 것은 교사가 나중에 판단한다.\n\
 - 의미를 알 수 없는 부분은 추측해 채우지 말고 그 부분을 빼고 쓴다.
 
 출력은 아래 형식만 낸다. 다른 말은 덧붙이지 않는다.
+세특 본문의 영어는 원문 그대로 두고, 교정할 것이 있으면 본문 뒤에 [교정 제안] 줄로 따로 적는다. 없으면 그 줄은 생략한다.
 
 ### ${s.name}
-(세특 본문)`;
+(세특 본문 — 영어는 원문 그대로)
+[교정 제안] 원문 → 교정본 (평가 대상 어법 유지, 뜻 살리는 최소한만)`;
   return p;
 }
 
@@ -596,7 +605,10 @@ on("verify","click",()=>{
   }
   S.verified = S.students
     .filter(s => map.has(s.name))
-    .map(s => ({ id:s.id, name:s.name, text:map.get(s.name), bytes:neisBytes(map.get(s.name)) }));
+    .map(s => {
+      const text = map.get(s.name);
+      return { id:s.id, name:s.name, text, bytes:neisBytes(text) };
+    });
 
   const unknown = [...map.keys()].filter(k => !S.students.some(s => s.name === k));
   const missing = S.students.filter(s => !map.has(s.name)).map(s => s.name);
@@ -604,11 +616,13 @@ on("verify","click",()=>{
   let html = `<table><thead><tr><th>순번</th><th>학번</th><th>이름</th><th>세특 초안</th><th>바이트</th><th>표시</th></tr></thead><tbody>`;
   S.verified.forEach((v,i)=>{
     const over = v.bytes > HARD, short = !over && v.bytes < 600;
-    html += `<tr class="${over?"over":(short?"short":"")}">
+    const cls = over ? "over" : (short ? "short" : "");
+    const flag = over ? "1500 초과" : (v.bytes>LIMIT ? "1450 넘음" : (short ? "짧음 — 자료가 적으면 정상" : ""));
+    html += `<tr class="${cls}">
       <td class="num">${i+1}</td><td class="num">${v.id}</td><td>${v.name}</td>
       <td>${v.text.replace(/</g,"&lt;")}</td>
       <td class="num">${v.bytes}</td>
-      <td>${over?"1500 초과":(v.bytes>LIMIT?"1450 넘음":(short?"짧음 — 자료가 적으면 정상":""))}</td>
+      <td>${flag}</td>
     </tr>`;
   });
   html += `</tbody></table>`;

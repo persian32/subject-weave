@@ -37,6 +37,11 @@
 
   .step{background:var(--card); border:1px solid var(--line); border-radius:8px; margin-top:22px; padding:20px 22px;}
   .step[data-off="1"]{opacity:.45; pointer-events:none;}
+  .step.done{padding:12px 22px;}
+  .step.done > :not(.step-head){display:none;}
+  .step.done .step-head{margin-bottom:0;}
+  .step.done .step-title::after{content:" ✓"; color:var(--ok);}
+  .step.done .done-tag{margin-left:auto; font-size:12px; color:var(--ok); background:var(--ok-soft); border:1px solid var(--ok); border-radius:4px; padding:1px 8px;}
   .step-head{display:flex; align-items:baseline; gap:12px; margin-bottom:12px;}
   .step-no{font-family:"Nanum Myeongjo",serif; font-weight:800; font-size:15px; color:var(--weave);
     border:1.5px solid var(--weave); width:28px; height:28px; border-radius:4px;
@@ -96,6 +101,12 @@
   tr.short td{background:var(--warn-soft);}
   footer{max-width:1080px; margin:36px auto 0; padding:0 clamp(16px,4vw,48px); font-size:12.5px; color:var(--ink-soft);}
   footer .sign{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; opacity:.65; letter-spacing:.02em;}
+  details.tip{margin-top:8px; font-size:12.5px;}
+  details.tip summary{color:var(--weave); cursor:pointer; user-select:none; list-style:none;}
+  details.tip summary::before{content:"ⓘ "; }
+  details.tip summary::-webkit-details-marker{display:none;}
+  details.tip[open] summary{margin-bottom:5px;}
+  details.tip > :not(summary){color:var(--ink-soft); line-height:1.6; padding-left:2px;}
   @media (prefers-reduced-motion: reduce){*{transition:none !important;}}
 </style>
 </head>
@@ -104,6 +115,7 @@
 <header>
   <h1><span class="mark">▤</span> subject-weave</h1>
   <p>학생 글에서 뽑은 문장, 자기평가서, 교사 관찰 — 세 갈래를 엮어 학생별 세특 프롬프트를 만듭니다.</p>
+  <p style="margin-top:6px"><a href="https://persian32.github.io/pdf-splitter-plus/" target="_blank" rel="noopener" style="color:var(--weave); font-weight:600; text-decoration:none; border-bottom:1px solid var(--weave)">← 먼저 PDF Splitter Plus에서 답안을 판독하세요</a></p>
   <div class="threads">
     <span class="thread t-a">학생 글에서 뽑은 문장</span>
     <span class="thread t-b">자기평가서</span>
@@ -119,7 +131,7 @@
   <section class="step" id="step1">
     <div class="step-head"><span class="step-no">1</span>
       <div><div class="step-title">자기평가 엑셀</div>
-      <div class="step-sub">리로스쿨에서 받은 원본 그대로 올리세요. 꺾쇠 제거를 미리 하지 않아도 됩니다.</div></div>
+      <div class="step-sub">리로스쿨 원본 엑셀을 올리세요.</div></div>
     </div>
     <div class="filedrop" id="drop" role="button" tabindex="0" aria-label="엑셀 파일 선택">
       <strong>엑셀 선택</strong> 또는 여기로 끌어다 놓기
@@ -132,10 +144,10 @@
   <section class="step" id="step2" data-off="1">
     <div class="step-head"><span class="step-no">2</span>
       <div><div class="step-title">추출 결과 붙여넣기 (선택)</div>
-      <div class="step-sub">PDF Splitter Plus의 지시문으로 AI가 뽑아준 결과를 통째로 붙여넣으세요. 이름이 한 글자 어긋나도(예: 최민송→최민용) 후보를 제안하고, 아래에서 직접 지정할 수 있습니다. 없으면 자기평가서만으로 진행합니다.</div>
-      <div class="step-sub" style="margin-top:8px; color:var(--weave)"><strong>드래그해서 긁지 말고, AI 답변 아래의 복사 버튼(⧉)을 누르세요.</strong> 긁어서 복사하면 <code>###</code>과 줄바꿈이 사라져 <code>김서윤주제:</code>처럼 뭉칩니다. 그래도 <code>이름 + 주제:</code> 패턴으로 갈라내긴 하지만, 복사 버튼 쪽이 훨씬 정확합니다.</div></div>
+      <div class="step-sub">판독 결과를 통째로 붙여넣으세요. 없으면 건너뛰어도 됩니다.</div>
+      <details class="tip"><summary>붙여넣기가 이상하면</summary>드래그해서 긁지 말고 AI 답변의 복사 버튼(⧉)을 쓰세요. 긁으면 줄바꿈이 사라져 이름이 뭉칩니다.</details></div>
     </div>
-    <textarea id="extract" rows="7" placeholder="### 김서영&#10;주제: …&#10;핵심 문장:&#10;1. (원문) — (해석)&#10;&#10;### 이서인&#10;…"></textarea>
+    <textarea id="extract" rows="7" placeholder="### 정화선&#10;주제: …&#10;핵심 문장:&#10;1. (원문) — (해석)&#10;&#10;### 조은영&#10;…"></textarea>
     <div class="btnrow"><button class="weave" id="match">이름으로 맞추기</button></div>
     <div class="notice" id="note2"></div>
     <div id="unmatched"></div>
@@ -144,8 +156,8 @@
   <section class="step" id="step3" data-off="1">
     <div class="step-head"><span class="step-no">3</span>
       <div><div class="step-title">교사 관찰과 문체</div>
-      <div class="step-sub">키워드는 이 브라우저를 벗어나지 않습니다. 비워두면 그 항목 없이 프롬프트가 만들어집니다.</div>
-      <div class="step-sub" style="margin-top:8px; color:var(--weave)"><strong>부족한 점도 그대로 쓰세요.</strong> 프롬프트가 AI에게 완곡한 표현으로, 그 학생의 활동에 맞춰 새로 쓰도록 지시합니다. 사실을 뒤집지는 않으니 나온 문장은 확인하세요. 학생마다 표현이 비슷하게 나온다면 AI가 상투구를 쓰고 있는 것이니 다시 시키세요.</div></div>
+      <div class="step-sub">학생별 문체를 고르고, 관찰한 점을 적으세요. 비워도 됩니다.</div>
+      <details class="tip"><summary>부족한 점을 써도 되나요</summary>그대로 쓰세요. 완곡한 표현으로 바뀝니다(사실은 안 뒤집힘). 학생마다 표현이 비슷하면 AI가 상투구를 쓰는 것이니 다시 시키세요.</details></div>
     </div>
     <div class="btnrow" style="margin-top:0">
       <span class="msg">전체 문체:</span>
@@ -158,15 +170,15 @@
       <button class="weave" id="copyall">전체 묶음 복사</button>
       <span class="msg" id="msg3"></span>
     </div>
-    <div class="notice warn" style="display:block">묶음 복사는 왕복을 줄이지만, 한 번에 많이 넣을수록 AI가 학생을 섞거나 대충 쓸 수 있습니다. 5명 안팎으로 나눠 넣고 결과를 확인하며 쓰는 편이 안전합니다.</div>
+    <details class="tip" style="margin-top:10px"><summary>묶음 복사 주의</summary>한 번에 많이 넣으면 AI가 학생을 섞을 수 있습니다. 5명 안팎으로 나눠 확인하며 쓰세요.</details>
   </section>
 
   <section class="step" id="step4" data-off="1">
     <div class="step-head"><span class="step-no">4</span>
       <div><div class="step-title">초안 바이트 검증</div>
-      <div class="step-sub">AI가 쓴 세특 초안을 붙여넣으세요. <code>### 이름</code>이 사라져도 이름을 찾아 가릅니다. 나이스 기준(한글 3바이트)으로 재고, 초과해도 자르지 않고 표시만 합니다. 줄이는 것은 교사가 판단할 일입니다.</div></div>
+      <div class="step-sub">세특 초안을 붙여넣으면 바이트를 잽니다. 초과는 표시만 하고 자르지 않습니다.</div></div>
     </div>
-    <textarea id="draft" rows="6" placeholder="### 김서영&#10;… 세특 본문 …&#10;&#10;### 이서인&#10;…"></textarea>
+    <textarea id="draft" rows="6" placeholder="### 정화선&#10;… 세특 본문 …&#10;&#10;### 조은영&#10;…"></textarea>
     <div class="btnrow">
       <button class="weave" id="verify">바이트 재기</button>
       <button class="ghost" id="dl" disabled>엑셀로 내려받기</button>
@@ -185,12 +197,16 @@
 <script>
 const $ = id => document.getElementById(id);
 const on = (id,ev,fn) => $(id).addEventListener(ev,fn);
+document.addEventListener("click", e=>{
+  const head = e.target.closest(".step.done .step-head");
+  if(head) reopenStep(head.closest(".step").id);
+});
 
 const LIMIT = 1450, HARD = 1500;
 const S = { students:[], tone:new Map(), kw:new Map(), extract:new Map(), verified:[] };
 
 // 나이스 기준(hjh010501.github.io/neis-counter): 한글 3바이트, 줄바꿈 2바이트, 나머지 전부 1바이트.
-// 작은따옴표 ' ' 같은 문자는 비ASCII지만 1바이트다 — 최가경 세특으로 대조 검증(1453 일치).
+// 작은따옴표 ' ' 같은 문자는 비ASCII지만 1바이트다 — 장인석 세특으로 대조 검증(1453 일치).
 function neisBytes(s){
   let t = 0;
   for(const ch of (s||"")){
@@ -206,6 +222,20 @@ function isBlank(v){
   return s === "" || s === "-" || s === "." || s === "ㅇ" || s === "x" || s === "없음";
 }
 function tidy(v){ return String(v ?? "").replace(/\s+/g," ").trim(); }
+
+/* 완료된 단계는 접어서 '지금 할 일'만 보이게 한다. 제목을 누르면 다시 펼쳐진다. */
+function markDone(stepId, tag){
+  const el = $(stepId);
+  el.classList.add("done");
+  let t = el.querySelector(".done-tag");
+  if(!t){
+    t = document.createElement("span");
+    t.className = "done-tag";
+    el.querySelector(".step-head").appendChild(t);
+  }
+  t.textContent = tag;
+}
+function reopenStep(stepId){ $(stepId).classList.remove("done"); }
 
 /* ---------- 1단계: 엑셀 ---------- */
 on("drop","click",()=>$("file").click());
@@ -264,6 +294,7 @@ async function readXlsx(f){
     $("step2").removeAttribute("data-off");
     $("step3").removeAttribute("data-off");
     $("step4").removeAttribute("data-off");
+    markDone("step1", `${S.students.length}명`);
     renderCards();
   }catch(err){
     console.error(err);
@@ -287,7 +318,7 @@ function splitBlocks(raw, names){
     });
   }
   // 2) '이름 + 주제:' 를 경계로 — 화면에서 긁어 복사하면 ### 도 줄바꿈도 사라지지만
-  //    "김서윤주제: …" 처럼 이름과 주제는 붙어서 남는다.
+  //    "조은영주제: …" 처럼 이름과 주제는 붙어서 남는다.
   const topicRe = /([가-힣]{2,5}\d?)\s*주제\s*[:：]/g;
   const hits = [...raw.matchAll(topicRe)];
   if(hits.length){
@@ -314,7 +345,7 @@ function splitBlocks(raw, names){
   return [];
 }
 
-// 한 글자 차이까지 후보로 (최민송 ↔ 최민용)
+// 한 글자 차이까지 후보로 (정화선 ↔ 최민용)
 function editDistance(a,b){
   if(Math.abs(a.length-b.length) > 1) return 9;
   const m=a.length, n=b.length, d=Array.from({length:m+1},(_,x)=>[x,...Array(n).fill(0)]);
@@ -363,13 +394,14 @@ on("match","click",()=>{
   n.textContent = parts.join(" · ");
 
   if(pending.length) renderPending(pending);
+  else if(hit + auto > 0) markDone("step2", `${hit+auto}명`);
   renderCards();
 });
 
 function renderPending(pending){
   const box = $("unmatched");
   const opts = S.students.map(s=>s.name);
-  box.innerHTML = `<div class="step-sub" style="margin-top:12px"><strong>이름이 정확히 맞지 않은 블록</strong> — AI가 손글씨에서 이름을 잘못 읽었을 수 있습니다. 누구 것인지 지정하세요.</div>` +
+  box.innerHTML = `<div class="step-sub" style="margin-top:12px"><strong>이름이 안 맞은 블록</strong> — 누구 것인지 골라주세요.</div>` +
     pending.map((p,i)=>`
       <div class="card" style="margin-top:8px">
         <div class="card-top"><span class="card-name">AI가 쓴 이름: ${p.label}</span></div>
@@ -587,6 +619,7 @@ on("verify","click",()=>{
   if(missing.length) parts.push(`초안 없음: ${missing.join(", ")}`);
   if(unknown.length) parts.push(`엑셀에 없는 이름: ${unknown.join(", ")}`);
   $("msg4").textContent = parts.join(" · ");
+  if(S.verified.length) markDone("step3", "프롬프트 복사함");
 });
 
 on("dl","click",()=>{

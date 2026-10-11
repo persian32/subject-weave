@@ -1,5 +1,18 @@
 # subject-weave
 
+**▶ Live site / 바로 열기:** https://persian32.github.io/subject-weave/ (in Korean)
+
+**English summary**
+
+- **What it does:** Combines three sources for each student (key sentences from the student's writing, the student's self-evaluation, and the teacher's own notes) into one prompt for writing a subject report. It then checks the AI's draft against the official length limit and exports a spreadsheet.
+- **What it does not do:** It does not write, judge, or shorten the report. That stays with the teacher and the teacher's AI. The tool only removes repetitive copying and pasting.
+- **Privacy:** The teacher's notes are never saved; they live in browser memory and disappear on refresh.
+- **My role:** I found the problem in my own work and decided what the tool should and should not do. The code was written with AI coding tools (Claude Code).
+
+---
+
+**한국어 설명**
+
 학생 글에서 뽑은 문장, 자기평가서, 교사 관찰 — **세 갈래를 엮어** 학생별 교과 세특
 프롬프트를 만들고, AI가 쓴 초안의 바이트를 재는 도구.
 
